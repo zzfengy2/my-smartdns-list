@@ -7,6 +7,7 @@
 * `apple.china.smartdns.conf`: 苹果中国区服务加速。
 * `google.china.smartdns.conf`: 谷歌中国区服务加速。
 * `bogus-nxdomain.china.smartdns.conf`: **防止运营商 DNS 劫持（NXDOMAIN 劫持）**。
+* foreign-servers.smartdns.conf: 国外分流服务器组 (gw)，包含 Google、Cloudflare 等加密 DNS。
 
 ## 🔧 使用方法
 1. 将 `.conf` 文件下载并上传至路由器 `/etc/smartdns/domain-set/`。
