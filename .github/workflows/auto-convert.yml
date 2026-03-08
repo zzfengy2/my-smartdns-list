@@ -2,10 +2,9 @@ name: Auto Convert SmartDNS List
 
 on:
   schedule:
-    - cron: '0 20 * * *' # 每天北京时间凌晨 4 点运行
-  workflow_dispatch:      # 允许手动触发
+    - cron: '0 20 * * *'
+  workflow_dispatch:
 
-# 关键修复：显式声明写权限，防止 exit code 128 (Permission Denied)
 permissions:
   contents: write
 
@@ -13,25 +12,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout your repo
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
-      # 关键修复：使用官方 Action 拉取源码，比手动 git clone 更稳定
-      - name: Clone Source
-        uses: actions/checkout@v4
-        with:
-          repository: felixonmars/dnsmasq-china-list
-          path: source
-          fetch-depth: 1
-
-      - name: Run Build
+      - name: Create Foreign Servers File
         run: |
+          # 创建国外服务器配置文件
+          cat <<EOF > foreign-servers.smartdns.conf
+          # Cloudflare
+          server 1.0.0.1 -group gw -exclude-default-group
+          server 1.1.1.1 -group gw -exclude-default-group
+          server-https https://cloudflare-dns.com/dns-query -group gw -exclude-default-group
+          server 2606:4700:4700::1111 -group gw -exclude-default-group
+          server 2606:4700:4700::1001 -group gw -exclude-default-group
+
+          # 谷歌 (Google)
+          server 8.8.8.8 -group gw -exclude-default-group
+          server 8.8.4.4 -group gw -exclude-default-group
+          server-https https://dns.google/dns-query -group gw -exclude-default-group
+          server-https https://dns64.google/dns-query -group gw -exclude-default-group
+          server-tls dns.google -group gw -exclude-default-group
+          server 2001:4860:4860::8888 -group gw -exclude-default-group
+          server 2001:4860:4860::8844 -group gw -exclude-default-group
+
+          # 微软 (Level 3)
+          server 4.2.2.2 -group gw -exclude-default-group
+          server 4.2.2.5 -group gw -exclude-default-group
+
+          # Neustar UltraDNS
+          server 64.6.64.6 -group gw -exclude-default-group
+          server 64.6.65.6 -group gw -exclude-default-group
+          server 2620:74:1b::1:1 -group gw -exclude-default-group
+          server 2620:74:1c::2:2 -group gw -exclude-default-group
+          EOF
+
+      - name: Clone Source and Build
+        run: |
+          git clone https://github.com/felixonmars/dnsmasq-china-list.git source
           cd source
           make smartdns SERVER=cn
-          # 确保文件被复制到根目录
           cp *.smartdns.conf ../
           cd ..
-          # 删除 source 目录，防止提交时产生冲突
           rm -rf source
 
       - name: Commit and Push
@@ -39,6 +60,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add .
-          # 即使没有更新也不要报错
-          git commit -m "Update SmartDNS lists $(date +%Y-%m-%d)" || exit 0
+          git commit -m "Update SmartDNS lists and servers $(date +%Y-%m-%d)" || exit 0
           git push
