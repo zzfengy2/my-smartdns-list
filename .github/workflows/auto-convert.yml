@@ -2,36 +2,43 @@ name: Auto Convert SmartDNS List
 
 on:
   schedule:
-    - cron: '0 20 * * *' # 每天凌晨 4 点(北京时间)自动运行
-  workflow_dispatch:      # 允许你手动点击按钮触发
+    - cron: '0 20 * * *' # 每天北京时间凌晨 4 点运行
+  workflow_dispatch:      # 允许手动触发
+
+# 关键修复：显式声明写权限，防止 exit code 128 (Permission Denied)
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout your repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # 关键修复：使用官方 Action 拉取源码，比手动 git clone 更稳定
       - name: Clone Source
         uses: actions/checkout@v4
         with:
           repository: felixonmars/dnsmasq-china-list
           path: source
-          fetch-depth: 1 # 只拉取最新的一次提交，极大加快速度并防止挂起
+          fetch-depth: 1
 
-      - name: Run Make SmartDNS
+      - name: Run Build
         run: |
           cd source
-          # 执行你要求的指令，将组名设为 cn
           make smartdns SERVER=cn
-          # 将生成的 .conf 文件移动到你的仓库根目录
+          # 确保文件被复制到根目录
           cp *.smartdns.conf ../
           cd ..
+          # 删除 source 目录，防止提交时产生冲突
+          rm -rf source
 
       - name: Commit and Push
         run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
           git add .
+          # 即使没有更新也不要报错
           git commit -m "Update SmartDNS lists $(date +%Y-%m-%d)" || exit 0
           git push
