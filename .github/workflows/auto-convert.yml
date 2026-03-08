@@ -12,12 +12,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
+      - name: Checkout Your Repo
         uses: actions/checkout@v4
+
+      # 关键修复：用官方 Action 代替 git clone，并开启“浅克隆”模式
+      - name: Clone Source
+        uses: actions/checkout@v4
+        with:
+          repository: felixonmars/dnsmasq-china-list
+          path: source
+          fetch-depth: 1  # 极其重要：只拉取最新快照，不下载历史记录，秒开！
 
       - name: Create Foreign Servers File
         run: |
-          # 创建国外服务器配置文件
           cat <<EOF > foreign-servers.smartdns.conf
           # Cloudflare
           server 1.0.0.1 -group gw -exclude-default-group
@@ -46,9 +53,8 @@ jobs:
           server 2620:74:1c::2:2 -group gw -exclude-default-group
           EOF
 
-      - name: Clone Source and Build
+      - name: Run Build
         run: |
-          git clone https://github.com/felixonmars/dnsmasq-china-list.git source
           cd source
           make smartdns SERVER=cn
           cp *.smartdns.conf ../
