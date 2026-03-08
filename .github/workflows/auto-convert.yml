@@ -12,9 +12,12 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v3
 
-      - name: Clone source repo
-        run: |
-          git clone https://github.com/felixonmars/dnsmasq-china-list.git source
+      - name: Clone Source
+        uses: actions/checkout@v4
+        with:
+          repository: felixonmars/dnsmasq-china-list
+          path: source
+          fetch-depth: 1 # 只拉取最新的一次提交，极大加快速度并防止挂起
 
       - name: Run Make SmartDNS
         run: |
