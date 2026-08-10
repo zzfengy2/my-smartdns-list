@@ -12,7 +12,10 @@ create_valid_fixture() {
   printf '%s\n' 'nameserver /alpha.example/cn' > "$target/accelerated-domains.china.smartdns.conf"
   printf '%s\n' 'nameserver /apple.example/cn' > "$target/apple.china.smartdns.conf"
   printf '%s\n' 'nameserver /google.example/cn' > "$target/google.china.smartdns.conf"
-  printf '%s\n' 'bogus-nxdomain 192.0.2.1' > "$target/bogus-nxdomain.china.smartdns.conf"
+  printf '%s\n' \
+    'bogus-nxdomain 192.0.2.1' \
+    'bogus-nxdomain 2001:db8::1' \
+    > "$target/bogus-nxdomain.china.smartdns.conf"
   printf '%s\n' 'domain-rules /openai.com/ -n gw' > "$target/proxy-domains.smartdns.conf"
 }
 
@@ -48,6 +51,14 @@ expect_failure "malformed directive" validate_fixture "$fixture"
 create_valid_fixture "$fixture"
 printf '%s\n' 'domain-rules /openai.com/ -n gw' >> "$fixture/proxy-domains.smartdns.conf"
 expect_failure "duplicate directive" validate_fixture "$fixture"
+
+create_valid_fixture "$fixture"
+printf '%s\n' 'bogus-nxdomain not-an-ip' >> "$fixture/bogus-nxdomain.china.smartdns.conf"
+expect_failure "invalid IP address" validate_fixture "$fixture"
+
+create_valid_fixture "$fixture"
+printf '%s\n' 'bogus-nxdomain :' >> "$fixture/bogus-nxdomain.china.smartdns.conf"
+expect_failure "invalid IPv6 address" validate_fixture "$fixture"
 
 create_valid_fixture "$fixture"
 MIN_ACCELERATED_LINES=2 expect_failure "minimum line count" validate_fixture "$fixture"

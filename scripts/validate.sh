@@ -50,20 +50,33 @@ validate_nameserver_file() {
 validate_bogus_file() {
   file=$1
   awk '
+    function valid_ipv4(address, octets, count, i) {
+      count = split(address, octets, ".")
+      if (count != 4) return 0
+      for (i = 1; i <= 4; i++) {
+        if (octets[i] !~ /^[0-9]+$/ || length(octets[i]) > 3 || octets[i] > 255) {
+          return 0
+        }
+      }
+      return 1
+    }
+    function valid_ipv6(address, copy, colon_count) {
+      if (address !~ /^[0-9A-Fa-f:]+$/ || address ~ /:::/) return 0
+      if (address ~ /^:[^:]/ || address ~ /[^:]:$/) return 0
+      copy = address
+      colon_count = gsub(/:/, "", copy)
+      if (colon_count < 2 || colon_count > 8) return 0
+      copy = address
+      sub(/::/, "", copy)
+      if (copy ~ /::/) return 0
+      return 1
+    }
     /^#|^$/ { next }
-    !/^bogus-nxdomain ([0-9]{1,3}\.){3}[0-9]{1,3}$/ {
+    $1 != "bogus-nxdomain" || NF != 2 || \
+      (!valid_ipv4($2) && !valid_ipv6($2)) {
       print FILENAME ":" FNR ": invalid bogus-nxdomain directive: " $0 > "/dev/stderr"
       invalid = 1
       next
-    }
-    {
-      split($2, octets, ".")
-      for (i = 1; i <= 4; i++) {
-        if (octets[i] < 0 || octets[i] > 255) {
-          print FILENAME ":" FNR ": invalid IPv4 address: " $2 > "/dev/stderr"
-          invalid = 1
-        }
-      }
     }
     seen[$0]++ {
       print FILENAME ":" FNR ": duplicate directive: " $0 > "/dev/stderr"
