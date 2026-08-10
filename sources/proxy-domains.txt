@@ -1,0 +1,48 @@
+# Search
+google.com
+google.com.hk
+duckduckgo.com
+bing.com
+wikipedia.org
+
+# Social and communication
+twitter.com
+x.com
+facebook.com
+instagram.com
+telegram.org
+discord.com
+reddit.com
+
+# Video and streaming
+youtube.com
+googlevideo.com
+ytimg.com
+ggpht.com
+netflix.com
+nflxvideo.net
+disneyplus.com
+spotify.com
+twitch.tv
+
+# AI services
+openai.com
+chatgpt.com
+oaistatic.com
+oaiusercontent.com
+oaistatsig.com
+anthropic.com
+claude.ai
+gemini.google.com
+
+# Development
+github.com
+githubusercontent.com
+githubassets.com
+github.io
+githubcopilot.com
+docker.com
+docker.io
+pypi.org
+huggingface.co
+notion.so
