@@ -2,90 +2,52 @@ name: Auto Convert SmartDNS List
 
 on:
   schedule:
-    - cron: '0 20 * * *' # 每天北京时间凌晨 4 点运行
-  workflow_dispatch:      # 允许手动触发运行
+    - cron: '0 20 * * *' # 04:00 Asia/Shanghai
+  workflow_dispatch:
 
 permissions:
-  contents: write         # 必须开启写权限，否则无法上传生成的列表
+  contents: write
+
+concurrency:
+  group: smartdns-list-update
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout Your Repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Create Proxy Domains File
-        run: |
-          # 1. 创建强制分流规则文件 (路标)
-          # 这些域名将强制发送到你在 Web UI 中设置的 gw 组
-          cat <<EOF > proxy-domains.smartdns.conf
-          # --- 基础与搜索 ---
-          domain-rules /google.com/ -n gw
-          domain-rules /google.com.hk/ -n gw
-          domain-rules /duckduckgo.com/ -n gw
-          domain-rules /bing.com/ -n gw
-          domain-rules /wikipedia.org/ -n gw
-
-          # --- 社交与通讯 ---
-          domain-rules /twitter.com/ -n gw
-          domain-rules /x.com/ -n gw
-          domain-rules /facebook.com/ -n gw
-          domain-rules /instagram.com/ -n gw
-          domain-rules /telegram.org/ -n gw
-          domain-rules /discord.com/ -n gw
-          domain-rules /reddit.com/ -n gw
-
-          # --- 视频与流媒体 ---
-          domain-rules /youtube.com/ -n gw
-          domain-rules /googlevideo.com/ -n gw
-          domain-rules /ytimg.com/ -n gw
-          domain-rules /ggpht.com/ -n gw
-          domain-rules /netflix.com/ -n gw
-          domain-rules /nflxvideo.net/ -n gw
-          domain-rules /disneyplus.com/ -n gw
-          domain-rules /spotify.com/ -n gw
-          domain-rules /twitch.tv/ -n gw
-
-          # --- AI 工具 ---
-          domain-rules /openai.com/ -n gw
-          domain-rules /chatgpt.com/ -n gw
-          domain-rules /anthropic.com/ -n gw
-          domain-rules /claude.ai/ -n gw
-          domain-rules /gemini.google.com/ -n gw
-
-          # --- 开发与技术 (结合你的兴趣) ---
-          domain-rules /github.com/ -n gw
-          domain-rules /githubusercontent.com/ -n gw
-          domain-rules /docker.com/ -n gw
-          domain-rules /docker.io/ -n gw
-          domain-rules /pypi.org/ -n gw
-          domain-rules /huggingface.co/ -n gw
-          domain-rules /notion.so/ -n gw
-          EOF
-
-      - name: Clone China List Source
-        uses: actions/checkout@v4
+      - name: Checkout upstream data
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: felixonmars/dnsmasq-china-list
-          path: source
-          fetch-depth: 1 # 解决卡住问题的核心：只拉取最新快照
+          path: _upstream
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Run Build and Convert
+      - name: Build and validate lists
         run: |
-          cd source
-          # 生成 SmartDNS 格式的国内加速列表
-          make smartdns SERVER=cn
-          cp *.smartdns.conf ../
-          cd ..
-          # 清理源码目录，防止提交冲突
-          rm -rf source
+          ./scripts/build.sh _upstream .
+          ./scripts/validate.sh .
 
-      - name: Commit and Push Changes
+      - name: Commit and push changes
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add .
-          # 如果内容没变化，则跳过提交，防止报错
-          git commit -m "Update SmartDNS lists and proxy rules $(date +%Y-%m-%d)" || exit 0
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -- \
+            accelerated-domains.china.smartdns.conf \
+            apple.china.smartdns.conf \
+            google.china.smartdns.conf \
+            bogus-nxdomain.china.smartdns.conf \
+            proxy-domains.smartdns.conf
+
+          if git diff --cached --quiet; then
+            echo "No list changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update SmartDNS lists and proxy rules $(date +%Y-%m-%d)"
           git push
